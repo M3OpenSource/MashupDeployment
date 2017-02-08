@@ -1,6 +1,7 @@
 /*
     Thibaud Lopez Schneider, Ciber
-    2016-10-04
+    2017-02-08
+	V4: Added option to not deploy
     V3: Add code to generate the .lawsonapp in case it's needed to deploy to LCM
     V2: Added this comments section; moved usage to: if args.Length==0; added Mashup version number to _.mashup filename; corrected profile message to say "this" tool
     V1: https://m3ideas.org/2016/06/07/continuous-integration-of-mashups-4-command-line/
@@ -13,6 +14,7 @@ using Mango.UI.Services.Mashup.Internal;
 using MangoServer.mangows;
 using Mashup.Designer;
 using System.Xml;
+using Ionic.Utils.Zip;
 
 namespace Mashups
 {
@@ -23,15 +25,19 @@ namespace Mashups
             // check the arguments
             if (args.Length == 0)
             {
-                Console.WriteLine("Usage: Deploy.exe Mashup1,Mashup2,Mashup3 DEV,TST");
+				Console.WriteLine("Usage: Deploy.exe Mashup1,Mashup2,Mashup3 [DEV,TST]");
                 return;
             }
 
-            // get the M3 userid/password
-            Console.Write("Userid: ");
-            string userid = Console.ReadLine();
-            Console.Write("Password: ");
-            string password = Console.ReadLine();
+			string userid = null;
+			string password = null;
+			if (args.Length > 1) {
+				// get the M3 userid/password
+				Console.Write ("Userid: ");
+				userid = Console.ReadLine ();
+				Console.Write ("Password: ");
+				password = Console.ReadLine ();
+			}
 
             // for each directory
             string[] directories = args[0].Split(',');
@@ -47,19 +53,20 @@ namespace Mashups
                     string nameAndVersion = manifest.DeploymentName + "_" + manifest.Version + Defines.ExtensionMashup;
                     Console.WriteLine("Generating {0}", nameAndVersion);
                     // generate the Mashup package
-                    if (SaveMashupFile(manifest))
+					if (SaveMashupFile(manifest))
                     {
-                        // get the resulting binary contents
-                        byte[] bytes = File.ReadAllBytes(manifest.File.Directory + "\\" + nameAndVersion);
-                        // for each M3 environment
-                        string[] environments = args[1].Split(',');
-                        foreach (string environment in environments)
-                        {
-                            // deploy
-                            Console.WriteLine("Deploying {0} to {1}", name, environment);
-                            DeployMashup(name, bytes, environment, userid, password);
-                        }
-                        Console.WriteLine("DONE");
+						if (args.Length > 1) {
+	                        // get the resulting binary contents
+	                        byte[] bytes = File.ReadAllBytes(manifest.File.Directory + "\\" + nameAndVersion);
+	                        // for each M3 environment
+	                        string[] environments = args[1].Split(',');
+	                        foreach (string environment in environments)
+	                        {
+	                            // deploy
+	                            Console.WriteLine("Deploying {0} to {1}", name, environment);
+	                            DeployMashup(name, bytes, environment, userid, password);
+	                        }
+						}
                     }
                     // generate the LawsonApp for LCM
                     string package = manifest.File.Directory + "\\" + manifest.DeploymentName + "_" + manifest.Version + Mango.Core.ApplicationConstants.FileExtension;
@@ -72,6 +79,7 @@ namespace Mashups
                     stream.Close();
                 }
             }
+			Console.WriteLine("DONE");
         }
   
         /*
